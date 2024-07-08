@@ -5786,7 +5786,8 @@ class Scheduler(SchedulerState, ServerNode):
             try:
                 if not self._is_finalizing():
                     await self.client_comms[client].close()
-                    del self.client_comms[client]
+                    if client in self.client_comms:
+                        del self.client_comms[client]
                     if self.status == Status.running:
                         logger.info("Close client connection: %s", client)
             except TypeError:  # comm becomes None during GC
