@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time as _time
 import asyncio
 import contextlib
 import dataclasses
@@ -3277,8 +3278,17 @@ class SchedulerState:
 
                 sw = set()
                 for addr, supplied in dr.items():
-                    if supplied >= required:
-                        sw.add(addr)
+                    # 🚨 FIX: Check available resources, not just total declared
+                    ws = self.workers.get(addr)
+                    if ws is not None:
+                        used = ws.used_resources.get(resource, 0)
+                        available = supplied - used  # KEY FIX
+                        if available >= required:
+                            sw.add(addr)
+                    else:
+                        # Fallback to original behavior if worker not found
+                        if supplied >= required:
+                            sw.add(addr)
 
                 dw[resource] = sw
 
@@ -3305,9 +3315,36 @@ class SchedulerState:
                 ws.used_resources[r] += required
 
     def release_resources(self, ts: TaskState, ws: WorkerState) -> None:
+        # https://github.com/dask/distributed/issues/9108
+        def avail_resources(ws, ts, _used):
+            for r, required in no_worker_ts.resource_restrictions.items():
+                if r in _used and ws.resources[r] - _used[r] < required:
+                    return False
+            return True
+
         if ts.resource_restrictions:
             for r, required in ts.resource_restrictions.items():
                 ws.used_resources[r] -= required
+
+            # 🚀 ENHANCEMENT: Re-check no-worker tasks after resource release
+            no_worker_tasks = []
+
+            _used = ws.used_resources.copy()
+
+            for no_worker_ts in list(self.unrunnable):
+                if (no_worker_ts.state == 'no-worker' and no_worker_ts.resource_restrictions):
+                    if avail_resources(ws, no_worker_ts, _used):
+                        no_worker_tasks.append(no_worker_ts)
+                        for r, required in no_worker_ts.resource_restrictions.items():
+                            _used[r] += required
+
+            if no_worker_tasks:
+                for ts in no_worker_tasks:
+                    del self.unrunnable[ts]
+
+                # Attempt to reschedule eligible tasks
+                recommendations = {ts.key: "processing" for ts in no_worker_tasks}
+                self.transitions(recommendations, stimulus_id=f"resource-released-{_time.time()}")
 
     def coerce_hostname(self, host: Hashable) -> str:
         """
