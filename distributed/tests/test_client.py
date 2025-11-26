@@ -3118,8 +3118,8 @@ async def test_compute_partially_forgotten(c, s, *workers, validate, swap_keys):
         s.validate = False
     # (CPython impl detail)
     # While it is not possible to know what the iteration order of a set will
-    # be, it is determinisitic and only depends on the hash of the inserted
-    # elements. Therefore, converting the set to a list will alway yield the
+    # be, it is deterministic and only depends on the hash of the inserted
+    # elements. Therefore, converting the set to a list will always yield the
     # same order. We're initializing the keys in this very specific order to
     # ensure that the scheduler internally arranges the keys in this way
 
@@ -4733,7 +4733,7 @@ async def test_retire_workers(c, s, a, b):
     info = await c.retire_workers(workers=[a.address], close_workers=True)
 
     # Deployment tooling is sometimes relying on this information to be returned
-    # This represents WorkerState.idenity() right now but may be slimmed down in
+    # This represents WorkerState.identity() right now but may be slimmed down in
     # the future
     assert info
     assert info[a.address]
@@ -6390,7 +6390,7 @@ async def test_profile_server_disabled(c, s, a, b):
 async def test_await_future(c, s, a, b):
     future = c.submit(inc, 1)
 
-    async def f():  # flake8: noqa
+    async def f():
         result = await future
         assert result == 2
 
@@ -6428,7 +6428,7 @@ async def test_as_completed_async_for_results(c, s, a, b):
     results = []
 
     async def f():
-        async for future, result in ac:
+        async for _, result in ac:
             results.append(result)
 
     await f()
@@ -8199,7 +8199,7 @@ async def test_client_disconnect_exception_on_cancelled_futures(c, s, a, b):
     with pytest.raises(FuturesCancelledError, match="connection to the scheduler"):
         futures_of(fut, client=c)
 
-    async for fut, res in as_completed([fut], with_results=True):
+    async for _, res in as_completed([fut], with_results=True):
         assert isinstance(res, FutureCancelledError)
         assert "connection to the scheduler" in res.msg
 
@@ -8301,7 +8301,7 @@ def test_worker_clients_do_not_claim_ownership_of_serialize_futures(
     # different process such that we cannot rely on msg ordering
     #
     # 1. The alive futures have to be serialized as part of the submit payload
-    # 2. The future arive at the worker but the worker client doesn't claim
+    # 2. The future arrive at the worker but the worker client doesn't claim
     #    ownership
     # 3. We're deleting them and the cancellation goes through to the scheduler
     #    such that it can release the futures
