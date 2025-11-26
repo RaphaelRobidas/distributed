@@ -123,7 +123,7 @@ def progress_quads(msg, nrows=8, ncols=3):
         d["all"],
         d["left"],
     ):
-        _a = 0
+        _a = a
         if a == 0:
             _a = 1
         rl = width * r / _a + l
