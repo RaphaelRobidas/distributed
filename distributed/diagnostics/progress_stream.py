@@ -123,12 +123,15 @@ def progress_quads(msg, nrows=8, ncols=3):
         d["all"],
         d["left"],
     ):
-        rl = width * r / a + l
-        ml = width * (r + m) / a + l
-        el = width * (r + m + e) / a + l
-        pl = width * (p + r + m + e) / a + l
-        ql = width * (p + r + m + e + q) / a + l
-        nwl = width * (p + r + m + e + q + nw) / a + l
+        _a = 0
+        if a == 0:
+            _a = 1
+        rl = width * r / _a + l
+        ml = width * (r + m) / _a + l
+        el = width * (r + m + e) / _a + l
+        pl = width * (p + r + m + e) / _a + l
+        ql = width * (p + r + m + e + q) / _a + l
+        nwl = width * (p + r + m + e + q + nw) / _a + l
         done = "%d / %d" % (r + m + e, a)
         d["released-loc"].append(rl)
         d["memory-loc"].append(ml)
