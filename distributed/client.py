@@ -2297,8 +2297,8 @@ class Client(SyncMethodMixin):
                 keys = [list(element) for element in partition_all(batch_size, key)]
             else:
                 keys = [key for _ in range(len(batches))]
-            return sum(
-                (
+            return list(
+                flatten(
                     self.map(
                         func,
                         *batch,
@@ -2315,8 +2315,7 @@ class Client(SyncMethodMixin):
                         **kwargs,
                     )
                     for key, batch in zip(keys, batches)
-                ),
-                [],
+                )
             )
 
         key = key or funcname(func)
@@ -3095,6 +3094,7 @@ class Client(SyncMethodMixin):
             elif resp["status"] == "error":
                 # Exception raised by the remote function
                 _, exc, tb = clean_exception(**resp)
+                assert exc is not None
                 exc = exc.with_traceback(tb)
             else:
                 assert resp["status"] == "OK"
@@ -3250,8 +3250,20 @@ class Client(SyncMethodMixin):
                     "|".join([f"(?:{mod})" for mod in ignore_modules])
                 )
             if ignore_files:
+                # Given ignore-files = [foo], match:
+                #   /path/to/foo
+                #   /path/to/foo.py[c]
+                #   /path/to/foo/bar.py[c]
+                #   \path\to\foo
+                #   \path\to\foo.py[c]
+                #   \path\to\foo\bar.py[c]
+                #   <frozen foo>
+                # Do not match files that have 'foo' as a substring,
+                # unless the user explicitly states '.*foo.*'.
+                ignore_files_or = "|".join(mod for mod in ignore_files)
                 fname_pattern = re.compile(
-                    r".*[\\/](" + "|".join(mod for mod in ignore_files) + r")([\\/]|$)"
+                    rf".*[\\/]({ignore_files_or})([\\/]|\.pyc?$|$)"
+                    rf"|<frozen ({ignore_files_or})>$"
                 )
         else:
             # stacklevel 0 or less - shows dask internals which likely isn't helpful

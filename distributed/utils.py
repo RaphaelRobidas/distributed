@@ -66,6 +66,7 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 
 import dask
+from dask.core import flatten
 from dask.utils import _deprecated, key_split
 from dask.utils import ensure_bytes as _ensure_bytes
 from dask.utils import parse_timedelta as _parse_timedelta
@@ -1395,7 +1396,7 @@ def parse_ports(port: int | str | Collection[int] | None) -> list[int] | list[No
     if isinstance(port, Collection):
         if not all(isinstance(p, int) for p in port):
             raise TypeError(port)
-        return list(port)  # type: ignore
+        return list(port)
 
     raise TypeError(port)
 
@@ -1473,8 +1474,8 @@ def cli_keywords(
             out = '"' + out + '"'
         return out
 
-    return sum(
-        (["--" + k.replace("_", "-"), convert_value(v)] for k, v in d.items()), []
+    return list(
+        flatten(["--" + k.replace("_", "-"), convert_value(v)] for k, v in d.items())
     )
 
 
